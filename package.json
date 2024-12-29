@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "bcryptjs": "*",
+    "express": "*",
+    "jsencrypt": "*",
+    "jsonwebtoken": "*",
+    "multer": "*",
+    "socket.io": "*"
+  }
+}

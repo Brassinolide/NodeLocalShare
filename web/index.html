@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>NodeLocalShare</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+                background-color: #f4f4f9;
+            }
+
+            nav {
+                display: flex;
+                align-items: center;
+                background: #007bff;
+                padding: 10px 20px;
+                color: #fff;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            }
+
+            nav a {
+                color: #fff;
+                text-decoration: none;
+                font-size: 16px;
+                padding: 10px 15px;
+                border-radius: 5px;
+                transition: background 0.3s ease;
+                user-select: none;
+            }
+
+            nav a:hover {
+                background: #0056b3;
+            }
+
+            button {
+                cursor: pointer;
+                outline: none;
+                border: none;
+            }
+
+            #window-overlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.6);
+                z-index: 1000;
+            }
+
+            .window {
+                display: none;
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: #ffffff;
+                padding: 30px;
+                width: 350px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+                border-radius: 10px;
+                text-align: center;
+                z-index: 1001;
+            }
+            .window h3 {
+                margin: 0 0 20px;
+                font-size: 20px;
+                color: #333;
+            }
+
+            .input {
+                width: 90%;
+                padding: 10px;
+                margin-bottom: 20px;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                font-size: 16px;
+                outline: none;
+                transition: border-color 0.3s ease;
+            }
+            .input:focus {
+                border-color: #4caf50;
+            }
+
+            .window-btn {
+                padding: 10px 15px;
+                margin: 5px;
+                font-size: 16px;
+                color: #fff;
+                border-radius: 5px;
+                background: #007bff;
+                transition: background 0.3s ease;
+            }
+            .window-btn:hover {
+                background: #0056b3;
+            }
+            .window-btn.ok {
+                background: #4caf50;
+            }
+            .window-btn.ok:hover {
+                background: #3b8a3e;
+            }
+            .window-btn.cancel {
+                background: #e53935;
+            }
+            .window-btn.cancel:hover {
+                background: #b71c1c;
+            }
+
+            .container {
+                max-width: 1300px;
+                margin: 40px auto;
+                padding: 20px;
+                background: #ffffff;
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+                border-radius: 10px;
+            }
+            .container h1 {
+                font-size: 20px;
+                color: #333;
+                margin-bottom: 10px;
+            }
+
+            textarea {
+                width: 100%;
+                height: 200px;
+                padding: 15px;
+                font-size: 16px;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                outline: none;
+                transition: border-color 0.3s ease;
+                resize: none;
+                box-sizing: border-box;
+            }
+            textarea:focus {
+                border-color: #4caf50;
+            }
+
+            .file-list {
+                margin-top: 10px;
+            }
+            .file-item {
+                display: flex;
+                align-items: center;
+                padding: 10px 15px;
+                margin-bottom: 5px;
+                background: #f9f9f9;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                cursor: pointer;
+                transition: background 0.3s ease;
+                user-select: none;
+            }
+            .file-item.selected {
+                background: #e6f7ff;
+                border-color: #1890ff;
+            }
+            .file-item .file-info {
+                display: flex;
+                align-items: center;
+                gap: 10px; /* 文件大小和名称之间的间距 */
+            }
+            .file-item .file-size {
+                font-size: 12px;
+                color: #888;
+            }
+            .file-item .file-name {
+                font-size: 14px;
+                color: #555;
+            }
+
+            .menu {
+                display: none;
+                position: absolute;
+                background: #fff;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                padding: 10px;
+                z-index: 1000;
+            }
+            .menu .menu-header {
+                font-weight: bold;
+                margin-bottom: 10px;
+                color: #333;
+            }
+            .menu .menu-item {
+                padding: 8px 15px;
+                cursor: pointer;
+                transition: background 0.3s ease;
+            }
+            .menu .menu-item:hover {
+                background: #f0f0f0;
+            }
+
+            .progress-bar {
+                width: 100%;
+                background-color: #f3f3f3;
+                border: 1px solid #ccc;
+                height: 25px;
+                border-radius: 5px;
+                overflow: hidden;
+                margin-bottom: 10px;
+            }
+            .progress-bar-fill {
+                height: 100%;
+                background-color: #4caf50;
+                width: 0;
+                transition: width 0.2s;
+            }
+        </style>
+        <script type="text/javascript" src="/js/jsencrypt.min.js"></script>
+        <script type="text/javascript" src="/js/jquery.min.js"></script>
+        <script type="text/javascript" src="/js/toastify-js.js"></script>
+        <script type="text/javascript" src="/socket.io/socket.io.js"></script>
+        <link rel="stylesheet" type="text/css" href="/css/toastify.min.css" />
+        <script>
+            function ShowToast(message, type = "info", duration = 3000, destination = "") {
+                var background_color = "";
+                switch (type) {
+                    case "success":
+                        background_color = "#44c030";
+                        break;
+                    case "error":
+                        background_color = "#c85662";
+                        break;
+                    case "info":
+                        background_color = "#b3b3a4";
+                        break;
+                }
+
+                Toastify({
+                    text: message,
+                    duration: duration,
+                    destination: destination,
+                    newWindow: true,
+                    close: true,
+                    gravity: "top",
+                    position: "center",
+                    stopOnFocus: true,
+                    style: {
+                        background: background_color,
+                    },
+                    onClick: function () {},
+                }).showToast();
+            }
+
+            requests = {
+                req: async function (method, url, data = null) {
+                    try {
+                        let response;
+                        if (method === "POSTFILE") {
+                            response = await $.ajax({
+                                url: url,
+                                type: "POST",
+                                data: data,
+                                contentType: false,
+                                processData: false,
+                            });
+                        } else {
+                            response = await $.ajax({
+                                url: url,
+                                type: method,
+                                data: data,
+                                contentType: data ? "application/json" : undefined,
+                            });
+                        }
+
+                        if (response.error !== "ERR_SUCCESS") {
+                            ShowToast(response.message || response.error, "error");
+                            return null;
+                        }
+
+                        if (response.message) ShowToast(response.message, "success");
+                        return response.data || true;
+                    } catch (error) {
+                        ShowToast("请求失败: " + error, "error");
+                        return null;
+                    }
+                },
+                get: async function (url) {
+                    return this.req("GET", url);
+                },
+                post: async function (url, data) {
+                    return this.req("POST", url, data);
+                },
+                postFile: async function (url, formData) {
+                    return this.req("POSTFILE", url, formData);
+                },
+            };
+        </script>
+    </head>
+    <body>
+        <nav>
+            <a onclick="location.reload()">NodeLocalShare</a>
+            <a onclick="OpenUploadWindow()">上传</a>
+            <a onclick="OpenLoginWindow()">登录</a>
+            <span id="userinfo" style="font-size: 14px"></span>
+        </nav>
+
+        <div class="container">
+            <textarea placeholder="剪贴板共享（websocket实时更新）" id="pasteboard"></textarea>
+
+            <h1>文件列表</h1>
+            <span id="file-list-info"></span>
+
+            <div class="file-list">
+                <div id="context-menu" class="menu">
+                    <div class="menu-header"></div>
+                    <div class="menu-item" onclick="DownloadFile()">下载</div>
+                    <div class="menu-item" onclick="DeleteFile()">删除</div>
+                    <div class="menu-item" onclick="CopyToClip(window.location.href + '#direct:' + selectedFiles[0])" id="directlink">获取直链</div>
+                </div>
+            </div>
+        </div>
+        <script>
+            const menu = document.getElementById("context-menu");
+            const menuHeader = menu.querySelector(".menu-header");
+            const fileListInfo = document.getElementById("file-list-info");
+            const fileListContainer = document.querySelector(".file-list");
+
+            function FormatSize(bytes) {
+                if (bytes === 0) return "0 Bytes";
+
+                const i = Math.floor(Math.log(bytes) / Math.log(1000));
+                return parseFloat((bytes / Math.pow(1000, i)).toFixed(2)) + " " + ["Bytes", "KB", "MB", "GB", "TB", "PB", "WTF"][i];
+            }
+
+            var fileItems;
+            async function UpdateFileList() {
+                if (sessionStorage.getItem("privilege").indexOf("list") === -1) {
+                    ShowToast("无获取文件列表权限", "error");
+                    return;
+                }
+
+                const list = await requests.get("/api/list");
+                if (!list) return;
+
+                fileItems = document.querySelectorAll(".file-item");
+                fileItems.forEach(function (fileItem) {
+                    fileItem.remove();
+                });
+
+                fileListInfo.innerText = `总数：${list.totalfile} 总大小：${FormatSize(list.totalsize)}`;
+
+                list.files.forEach((file) => {
+                    const fileItem = document.createElement("div");
+                    fileItem.classList.add("file-item");
+                    fileItem.setAttribute("data-name", file.path);
+
+                    const fileInfo = document.createElement("div");
+                    fileInfo.classList.add("file-info");
+
+                    const fileName = document.createElement("span");
+                    fileName.classList.add("file-name");
+                    fileName.textContent = file.path;
+
+                    const fileSize = document.createElement("span");
+                    fileSize.classList.add("file-size");
+                    fileSize.textContent = FormatSize(file.size);
+
+                    fileInfo.appendChild(fileName);
+                    fileInfo.appendChild(fileSize);
+                    fileItem.appendChild(fileInfo);
+                    fileListContainer.appendChild(fileItem);
+                });
+
+                fileItems = document.querySelectorAll(".file-item");
+                fileItems.forEach((item, index) => {
+                    item.addEventListener("click", (event) => {
+                        if (event.ctrlKey) {
+                            toggleSelection(item, index);
+                        } else if (event.shiftKey) {
+                            selectRange(index);
+                        } else {
+                            clearSelection();
+                            toggleSelection(item, index);
+                        }
+                    });
+
+                    item.addEventListener("contextmenu", (event) => {
+                        event.preventDefault();
+                        showMenu(event);
+                    });
+                });
+            }
+
+            let selectedFiles = [];
+            let lastSelectedIndex = null;
+
+            // Ctrl+A 全选
+            document.addEventListener("keydown", (event) => {
+                if (document.activeElement !== document.getElementById("pasteboard")) {
+                    if (event.ctrlKey && event.key === "a") {
+                        event.preventDefault();
+                        clearSelection();
+                        fileItems.forEach((item) => {
+                            item.classList.add("selected");
+                            selectedFiles.push(item.getAttribute("data-name"));
+                        });
+                        updateMenuHeader();
+                    }
+                }
+            });
+
+            document.addEventListener("click", hideMenu);
+
+            function toggleSelection(item, index) {
+                const fileName = item.getAttribute("data-name");
+                if (item.classList.contains("selected")) {
+                    item.classList.remove("selected");
+                    selectedFiles = selectedFiles.filter((file) => file !== fileName);
+                } else {
+                    item.classList.add("selected");
+                    selectedFiles.push(fileName);
+                }
+                lastSelectedIndex = index;
+                updateMenuHeader();
+            }
+
+            function selectRange(endIndex) {
+                if (lastSelectedIndex === null) {
+                    lastSelectedIndex = 0;
+                }
+                const startIndex = Math.min(lastSelectedIndex, endIndex);
+                const rangeEnd = Math.max(lastSelectedIndex, endIndex);
+                clearSelection();
+                for (let i = startIndex; i <= rangeEnd; i++) {
+                    const item = fileItems[i];
+                    item.classList.add("selected");
+                    selectedFiles.push(item.getAttribute("data-name"));
+                }
+                updateMenuHeader();
+            }
+
+            function clearSelection() {
+                fileItems.forEach((item) => item.classList.remove("selected"));
+                selectedFiles = [];
+            }
+
+            function showMenu(event) {
+                if (selectedFiles.length === 0) {
+                    const target = event.target.closest(".file-item");
+                    toggleSelection(target, Array.from(fileItems).indexOf(target));
+                }
+
+                if (selectedFiles.length > 1) {
+                    document.getElementById("directlink").style.display = "none";
+                    menuHeader.textContent = `${selectedFiles.length} 个文件已选`;
+                } else {
+                    document.getElementById("directlink").style.display = "block";
+                    menuHeader.textContent = selectedFiles[0];
+                }
+
+                menu.style.display = "block";
+                menu.style.left = `${event.pageX}px`;
+                menu.style.top = `${event.pageY}px`;
+            }
+
+            function hideMenu() {
+                menu.style.display = "none";
+            }
+
+            function updateMenuHeader() {
+                menuHeader.textContent = selectedFiles.length > 1 ? `${selectedFiles.length} 个文件已选` : selectedFiles[0] || "未选择文件";
+            }
+
+            function DownloadFile(file = null) {
+                if (sessionStorage.getItem("privilege").indexOf("download") === -1) {
+                    ShowToast("无下载权限", "error");
+                    return;
+                }
+
+                if (file) {
+                    window.location.href = "/download/" + file;
+                    return;
+                }
+
+                selectedFiles.forEach((file, index) => {
+                    if (index === 0) {
+                        window.location.href = "/download/" + encodeURIComponent(file);
+                    } else {
+                        setTimeout(() => {
+                            const a = document.createElement("a");
+                            a.href = "/download/" + encodeURIComponent(file);
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                        }, index * 1000);
+                    }
+                });
+            }
+
+            async function DeleteFile() {
+                if (sessionStorage.getItem("privilege").indexOf("delete") === -1) {
+                    ShowToast("无删除权限", "error");
+                    return;
+                }
+
+                await requests.post("/api/delete", JSON.stringify({ files: selectedFiles }));
+            }
+
+            function CopyToClip(content, message) {
+                var aux = document.createElement("input");
+                aux.setAttribute("value", content);
+                document.body.appendChild(aux);
+                aux.select();
+                document.execCommand("copy");
+                document.body.removeChild(aux);
+                if (message == null) {
+                    ShowToast("已复制到剪贴板", "success");
+                }
+            }
+        </script>
+
+        <div id="window-overlay"></div>
+
+        <div class="window" id="login-window">
+            <h3>登录</h3>
+            <input type="text" class="input" id="login-username" placeholder="用户名" />
+            <input type="password" class="input" id="login-password" placeholder="密码" />
+            <div>
+                <button class="window-btn ok" id="login-btn">登录</button>
+            </div>
+        </div>
+
+        <div class="window" id="upload-window">
+            <h3>上传文件（支持多选）</h3>
+            <div class="progress-bar">
+                <div class="progress-bar-fill" id="progress-bar-fill" style="width: 0%"></div>
+            </div>
+            <div>
+                <input type="file" id="file-input" multiple />
+                <button class="window-btn ok" id="upload-btn">上传</button>
+            </div>
+        </div>
+
+        <script>
+            //窗口覆盖
+            const windowOverlay = document.getElementById("window-overlay");
+            windowOverlay.addEventListener("click", CloseAllWindow);
+
+            //登录窗口
+            const loginWindow = document.getElementById("login-window");
+            const loginBtn = document.getElementById("login-btn");
+            loginBtn.addEventListener("click", Login);
+            const loginUser = document.getElementById("login-username");
+            const loginPass = document.getElementById("login-password");
+            const userInfo = document.getElementById("userinfo");
+
+            //上传窗口
+            const uploadWindow = document.getElementById("upload-window");
+            const uploadBtn = document.getElementById("upload-btn");
+            uploadBtn.addEventListener("click", Upload);
+            const fileInput = document.getElementById("file-input");
+            const progressBarFill = document.getElementById("progress-bar-fill");
+
+            //剪贴板
+            const pasteBoard = document.getElementById("pasteboard");
+            pasteBoard.addEventListener("input", () => {
+                socket.emit("updateText", pasteBoard.value);
+            });
+            const socket = io();
+            socket.on("updateText", (newText) => {
+                pasteBoard.value = newText;
+            });
+            socket.on("updateList", () => {
+                UpdateFileList();
+            });
+
+            async function RefreshUser() {
+                const user = await requests.get("/api/user");
+
+                sessionStorage.setItem("privilege", user.privilege);
+                if (!user.user) {
+                    userInfo.innerText = `(访客访问 权限${user.privilege})`;
+                } else {
+                    userInfo.innerHTML = `(已登录${user.user} 权限${user.privilege} <a onclick="Logout()">退出登录</a>)`;
+                }
+            }
+
+            async function Logout() {
+                if (await requests.get("/api/logout")) RefreshPage();
+            }
+
+            async function Login() {
+                if (!loginUser.value || !loginPass.value) {
+                    ShowToast("请输入用户名和密码", "error");
+                    return;
+                }
+
+                const pubkey = await requests.get("/api/pubkey");
+
+                if (pubkey) {
+                    const nonce = await requests.get("/api/nonce");
+
+                    if (nonce) {
+                        const encryptor = new JSEncrypt();
+                        encryptor.setPublicKey(pubkey);
+
+                        const login = await requests.post("/api/login", JSON.stringify({ data: encryptor.encrypt([nonce, loginUser.value, loginPass.value].join(":")) }));
+                        if (login) RefreshPage();
+                    }
+                }
+            }
+
+            async function Upload() {
+                if (sessionStorage.getItem("privilege").indexOf("upload") === -1) {
+                    ShowToast("无上传文件权限", "error");
+                    return;
+                }
+
+                const files = fileInput.files;
+                if (!files.length) {
+                    ShowToast("请选择文件", "error");
+                    return;
+                }
+
+                progressBarFill.style.width = "0%";
+
+                for (var i = 0; i < files.length; ++i) {
+                    const formData = new FormData();
+                    formData.append("file", files[i]);
+                    await requests.postFile("/api/upload", formData);
+                }
+
+                fileInput.value = "";
+                progressBarFill.style.width = "100%";
+            }
+
+            function CloseAllWindow() {
+                windowOverlay.style.display = "none";
+                loginWindow.style.display = "none";
+                loginUser.value = "";
+                loginPass.value = "";
+                uploadWindow.style.display = "none";
+            }
+
+            function OpenLoginWindow() {
+                windowOverlay.style.display = "block";
+                loginWindow.style.display = "block";
+            }
+
+            function OpenUploadWindow() {
+                windowOverlay.style.display = "block";
+                uploadWindow.style.display = "block";
+            }
+
+            async function RefreshPage() {
+                //刷新用户
+                await RefreshUser();
+
+                //处理直链
+                if (window.location.hash.startsWith("#")) {
+                    const splitted_hash = window.location.hash.substring(1).split(":");
+                    if (splitted_hash[0] === "direct") {
+                        DownloadFile(splitted_hash[1]);
+                    }
+                }
+                window.location.hash = "";
+
+                //关闭所有窗口
+                CloseAllWindow();
+
+                //更新文件列表
+                await UpdateFileList();
+            }
+            RefreshPage();
+        </script>
+    </body>
+</html>
