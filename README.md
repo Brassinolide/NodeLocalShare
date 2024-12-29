@@ -7,6 +7,8 @@ SPA设计，websocket实时更新，流畅快速
 
 B/S架构，客户端无需安装额外软件，仅需一个浏览器
 
+和[natter](https://github.com/MikeWang000000/Natter)兼容
+
 ```shell
 npm install
 node app.js
